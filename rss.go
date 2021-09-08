@@ -15,11 +15,17 @@ type RssFeedXml struct {
 	XMLName          xml.Name `xml:"rss"`
 	Version          string   `xml:"version,attr"`
 	ContentNamespace string   `xml:"xmlns:content,attr"`
+	ItunesNamespace  string   `xml:"xmlns:itunes,attr"`
 	Channel          *RssFeed
 }
 
 type RssContent struct {
 	XMLName xml.Name `xml:"content:encoded"`
+	Content string   `xml:",cdata"`
+}
+
+type RssDescription struct {
+	XMLName xml.Name `xml:"description"`
 	Content string   `xml:",cdata"`
 }
 
@@ -41,34 +47,62 @@ type RssTextInput struct {
 }
 
 type RssFeed struct {
-	XMLName        xml.Name `xml:"channel"`
-	Title          string   `xml:"title"`       // required
-	Link           string   `xml:"link"`        // required
-	Description    string   `xml:"description"` // required
-	Language       string   `xml:"language,omitempty"`
-	Copyright      string   `xml:"copyright,omitempty"`
-	ManagingEditor string   `xml:"managingEditor,omitempty"` // Author used
-	WebMaster      string   `xml:"webMaster,omitempty"`
-	PubDate        string   `xml:"pubDate,omitempty"`       // created or updated
-	LastBuildDate  string   `xml:"lastBuildDate,omitempty"` // updated used
-	Category       string   `xml:"category,omitempty"`
-	Generator      string   `xml:"generator,omitempty"`
-	Docs           string   `xml:"docs,omitempty"`
-	Cloud          string   `xml:"cloud,omitempty"`
-	Ttl            int      `xml:"ttl,omitempty"`
-	Rating         string   `xml:"rating,omitempty"`
-	SkipHours      string   `xml:"skipHours,omitempty"`
-	SkipDays       string   `xml:"skipDays,omitempty"`
+	XMLName        xml.Name        `xml:"channel"`
+	Title          string          `xml:"title"` // required
+	Link           string          `xml:"link"`  // required
+	Description    *RssDescription // required
+	Language       string          `xml:"language,omitempty"`
+	Copyright      string          `xml:"copyright,omitempty"`
+	ManagingEditor string          `xml:"managingEditor,omitempty"` // Author used
+	WebMaster      string          `xml:"webMaster,omitempty"`
+	PubDate        string          `xml:"pubDate,omitempty"`       // created or updated
+	LastBuildDate  string          `xml:"lastBuildDate,omitempty"` // updated used
+	Category       string          `xml:"category,omitempty"`
+	Generator      string          `xml:"generator,omitempty"`
+	Docs           string          `xml:"docs,omitempty"`
+	Cloud          string          `xml:"cloud,omitempty"`
+	Ttl            int             `xml:"ttl,omitempty"`
+	Rating         string          `xml:"rating,omitempty"`
+	SkipHours      string          `xml:"skipHours,omitempty"`
+	SkipDays       string          `xml:"skipDays,omitempty"`
 	Image          *RssImage
 	TextInput      *RssTextInput
 	Items          []*RssItem `xml:"item"`
+
+	// ref: https://help.apple.com/itc/podcasts_connect/#/itcb54353390
+	ItunesImage      *ItunesImage
+	ItunesCategory   *ItunesCategory
+	ItunesExplicit   string `xml:"itunes:explicit,omitempty"`
+	ItunesAuthor     string `xml:"itunes:author,omitempty"`
+	ItunesOwner      *ItunesOwner
+	ItunesTitle      string `xml:"itunes:title,omitempty"`
+	ItunesType       string `xml:"itunes:type,omitempty"`
+	ItunesNewFeedUrl string `xml:"itunes:new-feed-url,omitempty"`
+	ItunesBlock      string `xml:"itunes:block,omitempty"`
+	ItunesComplete   string `xml:"itunes:complete,omitempty"`
+}
+
+type ItunesImage struct {
+	XMLName xml.Name `xml:"itunes:image"`
+	Href    string   `xml:"href,attr"`
+}
+type ItunesOwner struct {
+	XMLName xml.Name `xml:"itunes:owner"`
+	Name    string   `xml:"itunes:name"`
+	Email   string   `xml:"itunes:email"`
+}
+
+type ItunesCategory struct {
+	XMLName        xml.Name `xml:"itunes:category"`
+	Text           string   `xml:"text,attr"`
+	ItunesCategory *ItunesCategory
 }
 
 type RssItem struct {
-	XMLName     xml.Name `xml:"item"`
-	Title       string   `xml:"title"`       // required
-	Link        string   `xml:"link"`        // required
-	Description string   `xml:"description"` // required
+	XMLName     xml.Name        `xml:"item"`
+	Title       string          `xml:"title"` // required
+	Link        string          `xml:"link"`  // required
+	Description *RssDescription // required
 	Content     *RssContent
 	Author      string `xml:"author,omitempty"`
 	Category    string `xml:"category,omitempty"`
@@ -77,6 +111,10 @@ type RssItem struct {
 	Guid        string `xml:"guid,omitempty"`    // Id used
 	PubDate     string `xml:"pubDate,omitempty"` // created or updated
 	Source      string `xml:"source,omitempty"`
+
+	ItunesDuration string `xml:"itunes:duration,omitempty"`
+	ItunesImage    *ItunesImage
+	ItunesExplicit string `xml:"itunes:explicit,omitempty"`
 }
 
 type RssEnclosure struct {
@@ -94,11 +132,13 @@ type Rss struct {
 // create a new RssItem with a generic Item struct's data
 func newRssItem(i *Item) *RssItem {
 	item := &RssItem{
-		Title:       i.Title,
-		Link:        i.Link.Href,
-		Description: i.Description,
-		Guid:        i.Id,
-		PubDate:     anyTimeFormat(time.RFC1123Z, i.Created, i.Updated),
+		Title: i.Title,
+		Link:  i.Link.Href,
+		Description: &RssDescription{
+			Content: i.Description,
+		},
+		Guid:    i.Id,
+		PubDate: anyTimeFormat(time.RFC1123Z, i.Created, i.Updated),
 	}
 	if len(i.Content) > 0 {
 		item.Content = &RssContent{Content: i.Content}
@@ -136,9 +176,11 @@ func (r *Rss) RssFeed() *RssFeed {
 	}
 
 	channel := &RssFeed{
-		Title:          r.Title,
-		Link:           r.Link.Href,
-		Description:    r.Description,
+		Title: r.Title,
+		Link:  r.Link.Href,
+		Description: &RssDescription{
+			Content: r.Description,
+		},
 		ManagingEditor: author,
 		PubDate:        pub,
 		LastBuildDate:  build,
@@ -164,5 +206,6 @@ func (r *RssFeed) FeedXml() interface{} {
 		Version:          "2.0",
 		Channel:          r,
 		ContentNamespace: "http://purl.org/rss/1.0/modules/content/",
+		ItunesNamespace:  "http://www.itunes.com/dtds/podcast-1.0.dtd",
 	}
 }
