@@ -15,6 +15,7 @@ type RssFeedXml struct {
 	XMLName          xml.Name `xml:"rss"`
 	Version          string   `xml:"version,attr"`
 	ContentNamespace string   `xml:"xmlns:content,attr"`
+	ItunesNamespace  string   `xml:"xmlns:itunes,attr"`
 	Channel          *RssFeed
 }
 
@@ -62,6 +63,29 @@ type RssFeed struct {
 	Image          *RssImage
 	TextInput      *RssTextInput
 	Items          []*RssItem `xml:"item"`
+
+	// ref: https://help.apple.com/itc/podcasts_connect/#/itcb54353390
+	ItunesImage      string `xml:"itunes:image,omitempty"`
+	ItunesCategory   *ItunesCategory
+	ItunesExplicit   string `xml:"itunes:explicit,omitempty"`
+	ItunesAuthor     string `xml:"itunes:author,omitempty"`
+	ItunesOwner      *ItunesOwner
+	ItunesTitle      string `xml:"itunes:title,omitempty"`
+	ItunesType       string `xml:"itunes:type,omitempty"`
+	ItunesNewFeedUrl string `xml:"itunes:new-feed-url,omitempty"`
+	ItunesBlock      string `xml:"itunes:block,omitempty"`
+	ItunesComplete   string `xml:"itunes:complete,omitempty"`
+}
+type ItunesOwner struct {
+	XMLName xml.Name `xml:"itunes:owner"`
+	Name    string   `xml:"itunes:name"`
+	Email   string   `xml:"itunes:email"`
+}
+
+type ItunesCategory struct {
+	XMLName        xml.Name `xml:"itunes:category"`
+	Text           string   `xml:"text,attr"`
+	ItunesCategory *ItunesCategory
 }
 
 type RssItem struct {
@@ -77,6 +101,10 @@ type RssItem struct {
 	Guid        string `xml:"guid,omitempty"`    // Id used
 	PubDate     string `xml:"pubDate,omitempty"` // created or updated
 	Source      string `xml:"source,omitempty"`
+
+	ItunesDuration string `xml:"itunes:duration,omitempty"`
+	ItunesImage    string `xml:"itunes:image,omitempty"`
+	ItunesExplicit string `xml:"itunes:explicit,omitempty"`
 }
 
 type RssEnclosure struct {
@@ -164,5 +192,6 @@ func (r *RssFeed) FeedXml() interface{} {
 		Version:          "2.0",
 		Channel:          r,
 		ContentNamespace: "http://purl.org/rss/1.0/modules/content/",
+		ItunesNamespace:  "http://www.itunes.com/dtds/podcast-1.0.dtd",
 	}
 }
