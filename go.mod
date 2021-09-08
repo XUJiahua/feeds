@@ -1,4 +1,4 @@
-module github.com/gorilla/feeds
+module github.com/xujiahua/feeds
 
 go 1.16
 
